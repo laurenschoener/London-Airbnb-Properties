@@ -232,6 +232,43 @@ def build_data_frame():
     return df_clean
 
 
+def gridsearch_scoring(estimator, param_grid, score, X_train, y_train):
+
+    model_gridsearch = GridSearchCV(estimator, param_grid, n_jobs=-1, verbose=True, scoring=score)
+    model_gridsearch.fit(X_train, y_train)
+    best_estimator = model_gridsearch.best_estimator_
+    best_param = model_gridsearch.best_params_
+    best_score = model_gridsearch.best_score_
+    print("\n Result of gridsearch")
+    print("{0:<20s} | {1:<8s} | {2}".format("Parameter", "Optimal", "Gridsearch values"))
+    print("-" * 55)
+    for param, vals, in param_grid.items():
+        print("{0:<20s} | {1:<8s} | {2}".format(str(param), str(best_param[param]), str(vals)))
+
+    return best_param, best_estimator, best_score
+
+
+def score_classifier(model, name, X_train, y_train):
+    start_time = time.time()
+    cv_scores = cross_validate(model, X_train, y_train, cv=StratifiedKFold(n_splits=10, shuffle=True, random_state=1), return_train_score=False, scoring=["recall", ])
+
+
 if __name__ == '__main__':
 
     build_data_frame()
+
+    rf = RandomForestClassifier(n_jobs=-1, random_state=0)
+    xgb = XGBClassifier(n_jobs=-1, random_state=1)
+    gbc = GradientBoostingClassifier(random_state=1)
+
+    r,p,f = score_classifier(rf, "random forest classifier")
+    r,p,f = score_classifier(xgb, "xgboost classifier")
+    r,p,f = socre_classifier(gbc, "gradient boost classifier")
+
+    r,p,f = test_classifier(rf, "random forest classifier")
+    r,p,f = test_classifier(xgb, "xgboost classifier")
+    r,p,f = test_classifier(gbc, "gradient boost classifier")
+
+    estimators = [['rf', rf], ['xgb', xgb], ['gbc', gbc]]
+    voting = VotingClassifier(estimators, voiting='soft')
+    r,p,f = test_classifier(voting, "bagging ensemble voting classifier")
